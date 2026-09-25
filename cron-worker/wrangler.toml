@@ -1,0 +1,11 @@
+name = "thread-analytics-publish-cron"
+main = "worker.js"
+compatibility_date = "2026-09-25"
+
+# Ping /api/cron/publish every 5 minutes. Cloudflare cron triggers fire reliably
+# and on time (unlike GitHub Actions' best-effort schedule).
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Note: CRON_SECRET is NOT set here — it's a Worker secret:
+#   wrangler secret put CRON_SECRET
