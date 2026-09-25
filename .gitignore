@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
+.env*
+
+# Claude Code / agent tooling (not app code)
+.claude/
+.agents/
+skills-lock.json

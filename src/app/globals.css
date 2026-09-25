@@ -22,5 +22,32 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Data-viz tokens (validated palette — see dataviz skill). Roles, not raw hex. */
+.viz {
+  --surface-1: #fcfcfb;
+  --surface-2: #f4f4f2;
+  --border-1: #e6e5e1;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #8a8981;
+  --accent: #2a78d6; /* categorical slot 1 / sequential blue */
+  --accent-soft: #cde2fb;
+  --good: #008300;
+}
+
+@media (prefers-color-scheme: dark) {
+  .viz {
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --border-1: #33322f;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8f8e85;
+    --accent: #3987e5;
+    --accent-soft: #184f95;
+    --good: #4caf50;
+  }
 }
