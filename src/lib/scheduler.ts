@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lt, lte, sql } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { scheduledThreads, type ScheduledThread } from '@/db/schema';
 import { getAccessToken } from '@/lib/accounts';
@@ -332,15 +332,46 @@ export async function runScheduledThread(id: string): Promise<ScheduledThread> {
   }
 }
 
+// Each invocation runs under a hard platform timeout (maxDuration = 300s on the
+// cron route). Publishing one image thread can take 1–2 min, and a thread that
+// gets hard-killed mid-publish strands its row in 'publishing' forever (nothing
+// reclaims it). So we stop starting new threads well before the kill, checked
+// *between* threads — whatever's left is drained by the next pinger run.
+const DRAIN_BUDGET_MS = 150_000;
+
 /**
- * Drain all due threads (pending and scheduled at/before `now`). Runs them
- * sequentially — each thread already sleeps between its own segments, and
- * serial publishing keeps us well under Threads' burst limits.
+ * Drain due threads (pending and scheduled at/before `now`). Runs them
+ * sequentially — each thread already sleeps between its own segments, and serial
+ * publishing keeps us well under Threads' burst limits. Stops early once
+ * `DRAIN_BUDGET_MS` of wall-clock is used so a run never gets killed mid-thread.
  */
 export async function publishDueThreads(now: Date = new Date()): Promise<{
   processed: number;
+  deferred: number;
+  reclaimed: number;
   results: { id: string; status: string; error?: string | null }[];
 }> {
+  // Self-heal rows orphaned in 'publishing': a hard-killed invocation (e.g. hit
+  // the 300s timeout mid-thread) can't write a final status, so the row sticks
+  // in 'publishing' forever. Such a thread may be partially live on Threads, so
+  // mark it 'failed' — which is NEVER auto-retried — rather than requeue it,
+  // to avoid re-posting segments that already went out. 10-min grace so we never
+  // touch a thread that's legitimately still publishing in a concurrent run.
+  const reclaim = await getDb()
+    .update(scheduledThreads)
+    .set({
+      status: 'failed',
+      error: 'Publish interrupted (likely a function timeout) — may be partially posted; verify on Threads before re-sending.',
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(scheduledThreads.status, 'publishing'),
+        lt(scheduledThreads.updatedAt, new Date(now.getTime() - 10 * 60_000)),
+      ),
+    )
+    .returning({ id: scheduledThreads.id });
+
   const due = await getDb()
     .select({ id: scheduledThreads.id })
     .from(scheduledThreads)
@@ -348,8 +379,13 @@ export async function publishDueThreads(now: Date = new Date()): Promise<{
     .orderBy(asc(scheduledThreads.scheduledAt))
     .limit(25);
 
+  const start = Date.now();
   const results: { id: string; status: string; error?: string | null }[] = [];
+  let processed = 0;
   for (const { id } of due) {
+    // Leave margin for the thread we're about to start to finish before the kill.
+    if (processed > 0 && Date.now() - start > DRAIN_BUDGET_MS) break;
+    processed++;
     try {
       const row = await runScheduledThread(id);
       results.push({ id, status: row.status, error: row.error });
@@ -361,5 +397,5 @@ export async function publishDueThreads(now: Date = new Date()): Promise<{
       });
     }
   }
-  return { processed: due.length, results };
+  return { processed, deferred: due.length - processed, reclaimed: reclaim.length, results };
 }
