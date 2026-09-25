@@ -1,4 +1,5 @@
 name: Publish due threads
+# Pings the Vercel publish endpoint on a schedule (see below).
 
 # Drives the scheduler on the Vercel Hobby plan, where native cron can only run
 # once/day. This pings /api/cron/publish every 5 minutes so scheduled threads go
