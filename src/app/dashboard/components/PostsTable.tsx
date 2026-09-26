@@ -19,11 +19,14 @@ export function PostsTable({
   posts,
   loading,
   onRepurpose,
+  repurposingId,
 }: {
   posts: PostRow[];
   loading: boolean;
-  /** Push a post's text into the Studio composer to schedule it again. */
+  /** Push a post's whole thread into the Studio composer to schedule it again. */
   onRepurpose?: (post: PostRow) => void;
+  /** Id of the post currently being rebuilt (shows a spinner on its button). */
+  repurposingId?: string | null;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>('views');
   const [asc, setAsc] = useState(false);
@@ -143,10 +146,11 @@ export function PostsTable({
                       {onRepurpose && (
                         <button
                           onClick={() => onRepurpose(p)}
-                          title="Repurpose in Studio — reschedule this post"
-                          className="rounded-md px-2 py-1 text-xs text-[var(--text-muted)] ring-1 ring-[var(--border-1)] transition-colors hover:text-[var(--accent)] hover:ring-[var(--accent)]/50"
+                          disabled={repurposingId != null}
+                          title="Repurpose in Studio — pull this whole thread (all parts + images) into the composer"
+                          className="rounded-md px-2 py-1 text-xs text-[var(--text-muted)] ring-1 ring-[var(--border-1)] transition-colors hover:text-[var(--accent)] hover:ring-[var(--accent)]/50 disabled:opacity-50"
                         >
-                          ✍
+                          {repurposingId === p.id ? '⏳' : '✍'}
                         </button>
                       )}
                       <button

@@ -12,8 +12,10 @@ export const REPURPOSE_KEY = 'ta:repurpose';
 export interface RepurposeDraft {
   /** Account to preselect; null lets Studio fall back to its default. */
   threadsUserId?: string | null;
-  /** Composer parts — usually one segment holding the original post text. */
+  /** Composer parts — every segment of the thread, in order. */
   segments: string[];
+  /** Per-segment image URL (index-aligned with `segments`); null entry = text-only. */
+  mediaUrls?: (string | null)[] | null;
   /** Original post link, kept for reference (not sent to Threads). */
   sourcePermalink?: string | null;
 }

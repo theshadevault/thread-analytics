@@ -165,6 +165,21 @@ export async function getScheduledThread(id: string): Promise<ScheduledThread | 
   return row ?? null;
 }
 
+/**
+ * Find the thread we published that contains a given Meta post id among its
+ * `publishedIds`. Lets "repurpose" recover a whole thread (all segments, in
+ * order) from any one of its published parts. Returns null for posts we didn't
+ * publish (e.g. external/older posts).
+ */
+export async function getThreadByPublishedId(postId: string): Promise<ScheduledThread | null> {
+  const [row] = await getDb()
+    .select()
+    .from(scheduledThreads)
+    .where(sql`${scheduledThreads.publishedIds} @> ${JSON.stringify([postId])}::jsonb`)
+    .limit(1);
+  return row ?? null;
+}
+
 export interface UpdateThreadInput {
   segments?: unknown;
   mediaUrls?: unknown;

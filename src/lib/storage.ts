@@ -125,6 +125,26 @@ export async function rehostMediaUrls(
 }
 
 /**
+ * Re-host arbitrary external image URLs (e.g. Meta CDN `media_url`s recovered
+ * for a repurpose) into our durable bucket, preserving index alignment. Unlike
+ * `rehostMediaUrls` this doesn't gate on the ephemeral-blob host — any URL that
+ * isn't already ours is copied. Entries that are already stored, or null, pass
+ * through. Falls back to the original URL if a copy fails or storage is unset.
+ */
+export async function rehostExternalUrls(
+  media: (string | null)[] | null | undefined,
+): Promise<(string | null)[] | null | undefined> {
+  if (!media || !isStorageConfigured() || !media.some(Boolean)) return media;
+  const batch = randomUUID();
+  return Promise.all(
+    media.map(async (u, i) => {
+      if (!u || isStoredUrl(u)) return u ?? null;
+      return (await rehostImage(u, batch, i)) ?? u;
+    }),
+  );
+}
+
+/**
  * Best-effort delete of any images we host in our bucket. Called after a post
  * publishes (Meta already fetched them) or when a draft is canceled. Never
  * throws — orphaned objects are harmless and swept by any later cleanup.

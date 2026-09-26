@@ -70,6 +70,7 @@ export default function StudioClient() {
       initial: {
         threadsUserId: draft.threadsUserId ?? null,
         segments: draft.segments,
+        mediaUrls: draft.mediaUrls ?? null,
       },
     });
   }, []);

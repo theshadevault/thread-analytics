@@ -191,6 +191,26 @@ export async function listPosts(params: {
   return inWindow.slice(0, maxPosts);
 }
 
+/**
+ * Fetch a single published post's media type + image URL. Used to recover the
+ * per-part images of an already-published thread (for "repurpose"), since we
+ * delete our own durable copies once a post goes live. `media_url` is only
+ * present for IMAGE/VIDEO posts and is a temporary Meta CDN URL, so callers
+ * should re-host it if they need it to survive.
+ */
+export async function getPostMedia(params: {
+  mediaId: string;
+  accessToken: string;
+}): Promise<{ media_type: string | null; media_url: string | null }> {
+  const url = new URL(`${GRAPH_BASE}/${API_VERSION}/${params.mediaId}`);
+  url.searchParams.set('fields', 'media_type,media_url');
+  url.searchParams.set('access_token', params.accessToken);
+  const res = await fetch(url, { method: 'GET' });
+  const data = await res.json();
+  if (!res.ok) throw new ThreadsApiError('getPostMedia', res.status, data);
+  return { media_type: data.media_type ?? null, media_url: data.media_url ?? null };
+}
+
 export type MetricName =
   | 'views'
   | 'likes'

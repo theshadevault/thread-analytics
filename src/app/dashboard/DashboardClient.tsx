@@ -40,6 +40,7 @@ export default function DashboardClient() {
   const [error, setError] = useState<string | null>(null);
   const [postsView, setPostsView] = useState<'table' | 'chart'>('table');
   const [search, setSearch] = useState('');
+  const [repurposingId, setRepurposingId] = useState<string | null>(null);
   const [notice, setNotice] = useConnectNotice();
 
   // Per-visit cache: keeps already-loaded account/range data so revisiting an
@@ -109,16 +110,35 @@ export default function DashboardClient() {
   // Send a high-performing post into the Studio composer to schedule it again.
   // Resolve the owning account: in single-account view it's the selected id;
   // in combined view, map the post's @username back to its account id.
-  function handleRepurpose(post: PostRow) {
+  async function handleRepurpose(post: PostRow) {
     const owner =
       selected && selected !== COMBINED
         ? selected
         : accounts?.find((a) => a.username === post.username)?.threadsUserId ?? null;
-    stashRepurpose({
-      threadsUserId: owner,
-      segments: [post.text ?? ''],
-      sourcePermalink: post.permalink,
-    });
+
+    // Rebuild the whole thread (all parts + images) from our published record.
+    // Falls back to just this post's text for posts we didn't publish from here.
+    let segments = [post.text ?? ''];
+    let mediaUrls: (string | null)[] | null = null;
+    setRepurposingId(post.id);
+    try {
+      const res = await fetch('/api/repurpose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: post.id }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (Array.isArray(d.segments) && d.segments.length) {
+          segments = d.segments;
+          mediaUrls = d.mediaUrls ?? null;
+        }
+      }
+    } catch {
+      /* keep the single-post fallback */
+    }
+
+    stashRepurpose({ threadsUserId: owner, segments, mediaUrls, sourcePermalink: post.permalink });
     window.location.assign('/studio');
   }
 
@@ -378,6 +398,7 @@ export default function DashboardClient() {
                     posts={filteredPosts}
                     loading={loading}
                     onRepurpose={handleRepurpose}
+                    repurposingId={repurposingId}
                   />
                 ) : (
                   <PostsChart posts={filteredPosts} loading={loading} />
