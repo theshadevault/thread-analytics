@@ -125,7 +125,7 @@ export default function DashboardClient() {
       const res = await fetch('/api/repurpose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: post.id }),
+        body: JSON.stringify({ postId: post.id, threadsUserId: owner }),
       });
       if (res.ok) {
         const d = await res.json();

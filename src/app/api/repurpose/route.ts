@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getThreadByPublishedId } from '@/lib/scheduler';
 import { getAccessToken } from '@/lib/accounts';
-import { getPostMedia } from '@/lib/threads';
+import { getPostMedia, getThreadChain } from '@/lib/threads';
 import { rehostExternalUrls } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
@@ -19,12 +19,12 @@ export const maxDuration = 60;
  * publish) — re-hosted into our bucket so a scheduled-for-later repost doesn't
  * break when Meta's temporary CDN URL expires.
  *
- * Body: { postId: string }
+ * Body: { postId: string, threadsUserId?: string }
  * 200 → { segments: string[], mediaUrls: (string|null)[] | null }
- * 404 → post isn't one we published (caller falls back to the single post text).
+ * 404 → couldn't reconstruct (caller falls back to the single post text).
  */
 export async function POST(req: NextRequest) {
-  let body: { postId?: string };
+  let body: { postId?: string; threadsUserId?: string };
   try {
     body = await req.json();
   } catch {
@@ -35,32 +35,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'postId is required.' }, { status: 400 });
   }
 
+  // Fast, exact path: a thread we published ourselves has its full segments +
+  // every part's id stored. Recover images from Meta via those ids.
   const row = await getThreadByPublishedId(postId);
-  if (!row) {
-    return NextResponse.json({ error: 'Not a thread published from here.' }, { status: 404 });
+  if (row) {
+    let mediaUrls: (string | null)[] | null = null;
+    const ids = row.publishedIds ?? [];
+    const token = ids.length ? await getAccessToken(row.threadsUserId) : null;
+    if (token && ids.length) {
+      const fetched = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const m = await getPostMedia({ mediaId: id, accessToken: token });
+            return m.media_type === 'IMAGE' ? m.media_url : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const aligned = row.segments.map((_, i) => fetched[i] ?? null);
+      mediaUrls = aligned.some(Boolean) ? ((await rehostExternalUrls(aligned)) ?? null) : null;
+    }
+    return NextResponse.json({ segments: row.segments, mediaUrls });
   }
 
-  let mediaUrls: (string | null)[] | null = null;
-  const ids = row.publishedIds ?? [];
-  const token = ids.length ? await getAccessToken(row.threadsUserId) : null;
-  if (token && ids.length) {
-    // publishedIds are index-aligned with segments (published in order). Pull
-    // each part's current image URL from Meta; text-only parts return null.
-    const fetched = await Promise.all(
-      ids.map(async (id) => {
-        try {
-          const m = await getPostMedia({ mediaId: id, accessToken: token });
-          return m.media_type === 'IMAGE' ? m.media_url : null;
-        } catch {
-          return null;
-        }
-      }),
-    );
-    const aligned = row.segments.map((_, i) => fetched[i] ?? null);
-    mediaUrls = aligned.some(Boolean)
-      ? ((await rehostExternalUrls(aligned)) ?? null)
-      : null;
+  // Fallback: reconstruct any thread straight from Meta by walking its reply
+  // chain (covers posts we didn't publish — older/best-performing ones).
+  const threadsUserId = body.threadsUserId ? String(body.threadsUserId) : '';
+  const token = threadsUserId ? await getAccessToken(threadsUserId) : null;
+  if (!token) {
+    return NextResponse.json({ error: 'Could not reconstruct this thread.' }, { status: 404 });
   }
-
-  return NextResponse.json({ segments: row.segments, mediaUrls });
+  try {
+    const { segments, mediaUrls } = await getThreadChain({ postId, accessToken: token });
+    if (!segments.length || !segments.some((s) => s.trim())) {
+      return NextResponse.json({ error: 'Empty thread.' }, { status: 404 });
+    }
+    const durable = mediaUrls.some(Boolean) ? ((await rehostExternalUrls(mediaUrls)) ?? null) : null;
+    return NextResponse.json({ segments, mediaUrls: durable });
+  } catch {
+    return NextResponse.json({ error: 'Could not reconstruct this thread.' }, { status: 404 });
+  }
 }

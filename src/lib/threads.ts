@@ -211,6 +211,133 @@ export async function getPostMedia(params: {
   return { media_type: data.media_type ?? null, media_url: data.media_url ?? null };
 }
 
+interface ThreadMedia {
+  id: string;
+  text?: string;
+  media_type?: string;
+  media_url?: string;
+  timestamp?: string;
+  username?: string;
+  replied_to?: { id: string };
+  root_post?: { id: string };
+}
+
+async function getMedia(
+  id: string,
+  fields: string,
+  accessToken: string,
+): Promise<ThreadMedia> {
+  const url = new URL(`${GRAPH_BASE}/${API_VERSION}/${id}`);
+  url.searchParams.set('fields', fields);
+  url.searchParams.set('access_token', accessToken);
+  const res = await fetch(url, { method: 'GET' });
+  const data = await res.json();
+  if (!res.ok) throw new ThreadsApiError('getMedia', res.status, data);
+  return data as ThreadMedia;
+}
+
+/** Fetch all descendant posts of a thread root (flattened), following paging. */
+async function getConversation(
+  rootId: string,
+  fields: string,
+  accessToken: string,
+  maxPages = 4,
+): Promise<ThreadMedia[]> {
+  const first = new URL(`${GRAPH_BASE}/${API_VERSION}/${rootId}/conversation`);
+  first.searchParams.set('fields', fields);
+  first.searchParams.set('limit', '100');
+  first.searchParams.set('access_token', accessToken);
+  const out: ThreadMedia[] = [];
+  let next: string | null = first.toString();
+  for (let page = 0; next && page < maxPages; page++) {
+    const res: Response = await fetch(next, { method: 'GET' });
+    const data = await res.json();
+    if (!res.ok) throw new ThreadsApiError('getConversation', res.status, data);
+    out.push(...((data.data ?? []) as ThreadMedia[]));
+    next = data.paging?.next ?? null;
+  }
+  return out;
+}
+
+const byTimeAsc = (a: ThreadMedia, b: ThreadMedia) =>
+  Date.parse(a.timestamp ?? '') - Date.parse(b.timestamp ?? '');
+
+/** Order the author's reply parts: walk the `replied_to` chain if present, else by time. */
+function orderThreadParts(rootId: string, own: ThreadMedia[]): ThreadMedia[] {
+  if (own.length && own.every((m) => m.replied_to?.id)) {
+    const byParent = new Map<string, ThreadMedia[]>();
+    for (const m of own) {
+      const p = m.replied_to!.id;
+      (byParent.get(p) ?? byParent.set(p, []).get(p)!).push(m);
+    }
+    const out: ThreadMedia[] = [];
+    const used = new Set<string>();
+    let cur = rootId;
+    for (;;) {
+      const kids = (byParent.get(cur) ?? []).filter((m) => !used.has(m.id)).sort(byTimeAsc);
+      if (!kids.length) break;
+      out.push(kids[0]);
+      used.add(kids[0].id);
+      cur = kids[0].id;
+    }
+    if (out.length) return out;
+  }
+  return [...own].sort(byTimeAsc);
+}
+
+/**
+ * Reconstruct a whole thread (all of the author's connected parts, in order,
+ * with each part's image) from ANY post id in it — used by "repurpose" for
+ * threads we didn't publish ourselves. Resolves the root, pulls the flattened
+ * conversation, keeps the author's own parts, orders them, and returns text +
+ * image URL per part. `media_url`s are temporary Meta CDN URLs — re-host them if
+ * they must outlive the click.
+ */
+export async function getThreadChain(params: {
+  postId: string;
+  accessToken: string;
+}): Promise<{ segments: string[]; mediaUrls: (string | null)[] }> {
+  const token = params.accessToken;
+  const baseFields = 'id,text,media_type,media_url,timestamp,username';
+
+  // Resolve the thread root (the clicked post may be a reply).
+  let clicked: ThreadMedia;
+  try {
+    clicked = await getMedia(params.postId, `${baseFields},root_post`, token);
+  } catch {
+    clicked = await getMedia(params.postId, baseFields, token);
+  }
+  const rootId = clicked.root_post?.id ?? clicked.id;
+  const root = rootId === clicked.id ? clicked : await getMedia(rootId, baseFields, token);
+  const author = root.username;
+
+  // The reply parts come from the flattened conversation. NOTE: reading replies
+  // needs `threads_manage_replies` *read* access (App Review) which our app
+  // doesn't have, so this currently fails for threads we didn't publish and we
+  // fall back to just the root part. It's kept so it lights up automatically if
+  // that permission is ever granted.
+  let convo: ThreadMedia[] = [];
+  try {
+    convo = await getConversation(rootId, `${baseFields},replied_to`, token);
+  } catch {
+    try {
+      convo = await getConversation(rootId, baseFields, token);
+    } catch {
+      convo = [];
+    }
+  }
+
+  const own = convo.filter(
+    (m) => m.id !== root.id && (author ? m.username === author : true),
+  );
+  const parts = [root, ...orderThreadParts(root.id, own)];
+
+  return {
+    segments: parts.map((p) => p.text ?? ''),
+    mediaUrls: parts.map((p) => (p.media_type === 'IMAGE' && p.media_url ? p.media_url : null)),
+  };
+}
+
 export type MetricName =
   | 'views'
   | 'likes'
