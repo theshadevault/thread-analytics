@@ -39,14 +39,15 @@ export function CountryBars({
   const total = data?.reduce((s, d) => s + d.value, 0) ?? 0;
   const top = data?.slice(0, 6) ?? [];
   const max = top.reduce((m, d) => Math.max(m, d.value), 0) || 1;
+  const otherPct = total > 0 ? ((total - top.reduce((n, d) => n + d.value, 0)) / total) * 100 : 0;
 
   return (
-    <div className="rounded-xl border border-[var(--border-1)] bg-[var(--surface-1)] p-4">
-      <h3 className="mb-3 text-sm font-semibold">Followers by country</h3>
+    <div className="flex flex-col gap-4 rounded-[22px] border border-[var(--border-1)] bg-[var(--surface-1)] p-5">
+      <h2 className="m-0 text-2xl font-bold tracking-[-0.03em]">Where they&apos;re from</h2>
       {loading && !data ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-5 animate-pulse rounded bg-[var(--surface-2)]" />
+            <div key={i} className="h-8 animate-pulse rounded-lg bg-[var(--surface-2)]" />
           ))}
         </div>
       ) : !data || top.length === 0 ? (
@@ -55,32 +56,44 @@ export function CountryBars({
           ~100 followers.
         </p>
       ) : (
-        <ul className="space-y-2.5">
-          {top.map((d) => {
-            const pct = total > 0 ? (d.value / total) * 100 : 0;
-            return (
-              <li key={d.label}>
-                <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                  <span className="truncate text-[var(--text-secondary)]" title={countryName(d.label)}>
-                    {countryName(d.label)}
-                  </span>
-                  <span className="shrink-0 tabular-nums text-[var(--text-primary)]">
-                    {pct.toFixed(1)}%
-                    <span className="ml-1.5 text-[var(--text-muted)]">
-                      {d.value.toLocaleString()}
+        <>
+          <ul className="flex flex-col gap-4">
+            {top.map((d, i) => {
+              const pct = total > 0 ? (d.value / total) * 100 : 0;
+              return (
+                <li key={d.label} className="flex flex-col gap-1.5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-sm font-medium" title={countryName(d.label)}>
+                      {countryName(d.label)}
                     </span>
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded bg-[var(--surface-2)]">
-                  <div
-                    className="h-full rounded bg-[var(--accent)]"
-                    style={{ width: `${Math.max(4, (d.value / max) * 100)}%` }}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                    <span className="flex shrink-0 items-baseline gap-2">
+                      <span className="font-mono text-[11px] text-[var(--text-muted)]">
+                        {d.value.toLocaleString()}
+                      </span>
+                      <span className="text-xl font-bold tracking-[-0.03em] tabular-nums">
+                        {pct.toFixed(1)}%
+                      </span>
+                    </span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-[var(--divider)]">
+                    <div
+                      className="h-full rounded-full transition-[width,background-color]"
+                      style={{
+                        width: `${Math.max(4, (d.value / max) * 100)}%`,
+                        background: i === 0 ? 'var(--accent)' : 'var(--text-faint)',
+                      }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {otherPct > 0.05 && (
+            <div className="border-t border-[var(--divider)] pt-1 font-mono text-[11px] text-[var(--text-muted)]">
+              Other countries · {otherPct.toFixed(1)}%
+            </div>
+          )}
+        </>
       )}
     </div>
   );

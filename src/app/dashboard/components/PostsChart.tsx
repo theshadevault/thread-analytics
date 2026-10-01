@@ -34,9 +34,9 @@ export function PostsChart({ posts, loading }: { posts: PostRow[]; loading: bool
   const max = Math.max(1, ...top.map((p) => valueOf(p, metric)));
 
   return (
-    <div className="rounded-xl border border-[var(--border-1)] bg-[var(--surface-1)]">
-      <div className="flex items-center justify-between border-b border-[var(--border-1)] px-4 py-3">
-        <h3 className="text-sm font-semibold">Top posts</h3>
+    <div className="rounded-[22px] border border-[var(--border-1)] bg-[var(--surface-1)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-5">
+        <h3 className="m-0 text-2xl font-bold tracking-[-0.03em]">Top posts</h3>
         <div className="flex overflow-hidden rounded-lg ring-1 ring-[var(--border-1)]">
           {METRICS.map((m) => (
             <button
@@ -44,7 +44,7 @@ export function PostsChart({ posts, loading }: { posts: PostRow[]; loading: bool
               onClick={() => setMetric(m.key)}
               className={`px-2.5 py-1 text-xs font-medium transition-colors ${
                 metric === m.key
-                  ? 'bg-[var(--accent)] text-white'
+                  ? 'bg-[var(--accent)] text-[var(--on-accent)]'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >

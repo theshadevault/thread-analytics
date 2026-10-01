@@ -61,9 +61,10 @@ export function PostsTable({
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border-1)] bg-[var(--surface-1)]">
-      <div className="border-b border-[var(--border-1)] px-4 py-3">
-        <h3 className="text-sm font-semibold">Posts ({posts.length})</h3>
+    <div className="rounded-[22px] border border-[var(--border-1)] bg-[var(--surface-1)]">
+      <div className="flex items-baseline gap-2.5 px-5 pb-3 pt-5">
+        <h3 className="m-0 text-2xl font-bold tracking-[-0.03em]">Posts</h3>
+        <span className="font-mono text-xs text-[var(--text-muted)]">{posts.length} total</span>
       </div>
 
       {loading && posts.length === 0 ? (
@@ -79,7 +80,7 @@ export function PostsTable({
           <table className="w-full min-w-[620px] text-sm">
             <thead>
               <tr className="text-left text-xs text-[var(--text-muted)]">
-                <th className="px-4 py-2 font-medium">
+                <th className="px-5 py-2 font-medium">
                   <button
                     onClick={() => toggle('timestamp')}
                     className="hover:text-[var(--text-primary)]"
@@ -110,19 +111,19 @@ export function PostsTable({
               {sorted.map((p) => (
                 <tr
                   key={p.id}
-                  className="border-t border-[var(--border-1)] transition-colors hover:bg-[var(--surface-2)]"
+                  className="border-t border-[var(--divider)] transition-colors hover:bg-[#1b1b18]"
                 >
-                  <td className="max-w-[240px] px-4 py-2.5">
+                  <td className="max-w-[240px] px-5 py-3">
                     <a
                       href={p.permalink ?? '#'}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block truncate text-[var(--text-primary)] hover:text-[var(--accent)]"
+                      className="block truncate font-medium text-[var(--text-primary)] hover:text-[var(--accent)]"
                       title={p.text}
                     >
                       {p.text || '(no text)'}
                     </a>
-                    <span className="text-xs text-[var(--text-muted)]">
+                    <span className="font-mono text-[11px] text-[var(--text-muted)]">
                       {new Date(p.timestamp).toLocaleDateString()}
                     </span>
                   </td>
@@ -148,7 +149,7 @@ export function PostsTable({
                           onClick={() => onRepurpose(p)}
                           disabled={repurposingId != null}
                           title="Repurpose in Studio — pull this whole thread (all parts + images) into the composer"
-                          className="rounded-md px-2 py-1 text-xs text-[var(--text-muted)] ring-1 ring-[var(--border-1)] transition-colors hover:text-[var(--accent)] hover:ring-[var(--accent)]/50 disabled:opacity-50"
+                          className="rounded-[7px] px-2 py-1 text-xs text-[var(--text-secondary)] ring-1 ring-[var(--border-2)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--on-accent)] hover:ring-[var(--accent)] disabled:opacity-50"
                         >
                           {repurposingId === p.id ? '⏳' : '✍'}
                         </button>
@@ -156,7 +157,7 @@ export function PostsTable({
                       <button
                         onClick={() => copyHook(p)}
                         title="Copy hook + likes"
-                        className="rounded-md px-2 py-1 text-xs text-[var(--text-muted)] ring-1 ring-[var(--border-1)] transition-colors hover:text-[var(--text-primary)] hover:ring-[var(--accent)]/50"
+                        className="rounded-[7px] px-2 py-1 text-xs text-[var(--text-secondary)] ring-1 ring-[var(--border-2)] transition-colors hover:text-[var(--text-primary)]"
                       >
                         {copiedId === p.id ? '✓' : '⧉'}
                       </button>

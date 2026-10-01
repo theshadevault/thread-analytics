@@ -11,6 +11,7 @@ import {
   hasMedia,
   isSameDay,
   monthGrid,
+  pillLook,
   statusMeta,
   usernameFor,
   type Thread,
@@ -54,57 +55,67 @@ export function MonthCalendar({
   const today = new Date();
   const thisMonth = month.getMonth();
 
+  const todayCol = (today.getDay() + 6) % 7;
+  const showsToday = days.some((d) => isSameDay(d, today));
+
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--border-1)] bg-[var(--surface-1)]">
-      {/* Weekday header */}
-      <div className="grid grid-cols-7 border-b border-[var(--border-1)]">
-        {WEEKDAYS.map((w) => (
-          <div
-            key={w}
-            className="px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
-          >
-            <span className="hidden sm:inline">{w}</span>
-            <span className="sm:hidden">{w.slice(0, 3)}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Day grid */}
-      <div className="grid grid-cols-7">
-        {days.map((day, i) => {
-          const inMonth = day.getMonth() === thisMonth;
-          const key = dayKey(day);
-          const items = byDay.get(key) ?? [];
-          const isToday = isSameDay(day, today);
-          return (
+    <div className="overflow-x-auto rounded-[22px] border border-[var(--border-1)] bg-[var(--surface-3)]">
+      <div className="min-w-[700px]">
+        {/* Weekday header */}
+        <div className="grid grid-cols-7 border-b border-[var(--border-1)]">
+          {WEEKDAYS.map((w, i) => (
             <div
-              key={i}
-              className={`group relative min-h-[112px] border-b border-r border-[var(--border-1)] p-1.5 ${
-                i % 7 === 6 ? 'border-r-0' : ''
-              } ${inMonth ? '' : 'bg-[var(--surface-2)]/40'}`}
+              key={w}
+              className="px-3 py-3 font-mono text-[11px] tracking-[0.08em]"
+              style={{ color: showsToday && i === todayCol ? 'var(--accent)' : 'var(--text-muted)' }}
             >
-              <div className="mb-1 flex items-center justify-between px-0.5">
-                <button
-                  onClick={() => onAddOnDay(atNineAm(day))}
-                  title="Add a post on this day"
-                  className="text-[var(--text-muted)] opacity-0 transition-opacity hover:text-[var(--accent)] group-hover:opacity-100"
-                >
-                  +
-                </button>
-                <span
-                  className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs tabular-nums ${
-                    isToday
-                      ? 'bg-[var(--accent)] font-semibold text-white'
-                      : inMonth
-                        ? 'text-[var(--text-secondary)]'
-                        : 'text-[var(--text-muted)]'
-                  }`}
-                >
-                  {day.getDate()}
-                </span>
-              </div>
+              {w.slice(0, 3).toUpperCase()}
+            </div>
+          ))}
+        </div>
 
-              <div className="space-y-1">
+        {/* Day grid */}
+        <div className="grid grid-cols-7">
+          {days.map((day, i) => {
+            const inMonth = day.getMonth() === thisMonth;
+            const key = dayKey(day);
+            const items = byDay.get(key) ?? [];
+            const isToday = isSameDay(day, today);
+            return (
+              <div
+                key={i}
+                className={`group relative flex min-h-[104px] flex-col gap-1 border-b border-r border-[#1f1f1c] p-2 transition-colors hover:bg-[#191916] ${
+                  i % 7 === 6 ? 'border-r-0' : ''
+                } ${inMonth ? '' : 'bg-[#0f0f0d]'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => onAddOnDay(atNineAm(day))}
+                      title="Add a post on this day"
+                      aria-label={`Add a post on ${day.toDateString()}`}
+                      className="text-sm leading-none text-[var(--text-muted)] opacity-0 transition-opacity hover:text-[var(--accent)] focus-visible:opacity-100 group-hover:opacity-100"
+                    >
+                      +
+                    </button>
+                    {items.length > 0 && (
+                      <span className="font-mono text-[10px] text-[var(--text-faint)]">
+                        {items.length} post{items.length === 1 ? '' : 's'}
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className="flex h-[26px] min-w-[26px] items-center justify-center rounded-full px-1 text-[15px] font-bold tabular-nums"
+                    style={
+                      isToday
+                        ? { background: 'var(--accent)', color: 'var(--on-accent)' }
+                        : { color: inMonth ? 'var(--text-primary)' : '#4a4a43' }
+                    }
+                  >
+                    {day.getDate()}
+                  </span>
+                </div>
+
                 {items.map((t) => (
                   <ThreadPill
                     key={t.id}
@@ -114,9 +125,9 @@ export function MonthCalendar({
                   />
                 ))}
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -132,21 +143,17 @@ function ThreadPill({
   onClick: () => void;
 }) {
   const meta = statusMeta(thread.status);
+  const look = pillLook(thread.status);
   const title = thread.segments[0] ?? '';
   const time = fmtTime(displayDate(thread));
   return (
     <button
       onClick={onClick}
       title={`@${username} · ${meta.label}\n${title}`}
-      className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[11px] leading-tight transition-colors hover:brightness-110"
-      style={{ background: meta.bg, boxShadow: `inset 0 0 0 1px ${meta.ring}` }}
+      className="flex w-full items-center gap-1.5 rounded-[7px] border px-1.5 py-1 text-left text-[11.5px] leading-tight transition-[filter] hover:brightness-125"
+      style={{ background: look.bg, borderColor: look.border, borderStyle: look.borderStyle }}
     >
-      <span
-        className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white"
-        style={{ background: avatarColor(username) }}
-      >
-        {username.slice(0, 1).toUpperCase()}
-      </span>
+      <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: avatarColor(username) }} />
       <span className="min-w-0 flex-1 truncate font-medium text-[var(--text-primary)]">
         {hasMedia(thread) && <span title="Has images">🖼 </span>}
         {title || '(empty)'}
@@ -154,7 +161,9 @@ function ThreadPill({
           <span className="text-[var(--text-muted)]"> +{thread.segments.length - 1}</span>
         )}
       </span>
-      <span className="shrink-0 tabular-nums text-[var(--text-muted)]">{time}</span>
+      <span className="shrink-0 font-mono text-[10px] tabular-nums" style={{ color: look.time }}>
+        {time}
+      </span>
     </button>
   );
 }

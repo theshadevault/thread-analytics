@@ -111,7 +111,7 @@ export function DraftsView({
         </p>
         <button
           onClick={onNew}
-          className="mt-4 inline-block rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
+          className="mt-4 inline-block rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--on-accent)] hover:opacity-90"
         >
           + New post
         </button>
@@ -139,7 +139,7 @@ export function DraftsView({
               onClick={() => toggleFilter(f.key)}
               className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition-colors ${
                 on
-                  ? 'bg-[var(--accent)] text-white ring-transparent'
+                  ? 'bg-[var(--accent)] text-[var(--on-accent)] ring-transparent'
                   : 'bg-[var(--surface-1)] text-[var(--text-secondary)] ring-[var(--border-1)] hover:text-[var(--text-primary)]'
               }`}
             >
@@ -174,7 +174,7 @@ export function DraftsView({
             <button
               onClick={deleteSelected}
               disabled={bulkBusy}
-              className="rounded-lg px-3 py-1.5 text-xs font-medium text-[#e5484d] ring-1 ring-[color-mix(in_srgb,#e5484d_40%,transparent)] hover:bg-[color-mix(in_srgb,#e5484d_10%,transparent)] disabled:opacity-50"
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--bad)] ring-1 ring-[color-mix(in_srgb,var(--bad)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--bad)_10%,transparent)] disabled:opacity-50"
             >
               {bulkBusy ? 'Deleting…' : `Delete ${selected.size}`}
             </button>
@@ -257,7 +257,7 @@ function DraftCard({
           aria-label="Select draft"
         />
         <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-[var(--on-accent)]"
           style={{ background: avatarColor(username) }}
         >
           {username.slice(0, 1).toUpperCase()}
@@ -285,7 +285,7 @@ function DraftCard({
           onClick={del}
           disabled={busy}
           title="Delete draft"
-          className="rounded-md px-2 py-1 text-xs text-[var(--text-muted)] ring-1 ring-[var(--border-1)] hover:text-[#e5484d] hover:ring-[color-mix(in_srgb,#e5484d_40%,transparent)] disabled:opacity-50"
+          className="rounded-md px-2 py-1 text-xs text-[var(--text-muted)] ring-1 ring-[var(--border-1)] hover:text-[var(--bad)] hover:ring-[color-mix(in_srgb,var(--bad)_40%,transparent)] disabled:opacity-50"
         >
           🗑
         </button>

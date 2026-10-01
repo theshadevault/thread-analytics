@@ -1,53 +1,50 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0e0e0c;
+  --foreground: #f2f0e8;
+  color-scheme: dark;
+  /* Default accent; page shells override it per account (lib/theme.ts). Kept on
+     :root, not .viz, so nested .viz modals inherit the account's accent. */
+  --accent: #f2f0e8;
+  --accent-soft: color-mix(in srgb, #f2f0e8 22%, transparent);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-sans-face);
+  --font-mono: var(--font-mono-face);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-sans-face), system-ui, sans-serif;
 }
 
-/* Data-viz tokens (validated palette — see dataviz skill). Roles, not raw hex. */
+/* Design tokens (threadlab, dark). Roles, not raw hex. `--accent` is re-set per
+   account by the page shell — see accentVars() in lib/theme.ts. */
 .viz {
-  --surface-1: #fcfcfb;
-  --surface-2: #f4f4f2;
-  --border-1: #e6e5e1;
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #8a8981;
-  --accent: #2a78d6; /* categorical slot 1 / sequential blue */
-  --accent-soft: #cde2fb;
-  --good: #008300;
+  --page: #0e0e0c;
+  --surface-1: #171714;
+  --surface-2: #1f1f1c;
+  --surface-3: #131311;
+  --border-1: #26261f;
+  --border-2: #33332d;
+  --divider: #22221f;
+  --text-primary: #f2f0e8;
+  --text-secondary: #c9c7bd;
+  --text-muted: #8c8a80;
+  --text-faint: #6e6c64;
+  --on-accent: #0e0e0c;
+  --good: #7ddc9a;
+  --bad: #ff8a70;
+  --bad-strong: #ff6b4a;
+  --bad-bg: #2a1512;
+  --bad-border: #5a2a22;
 }
 
-@media (prefers-color-scheme: dark) {
-  .viz {
-    --surface-1: #1a1a19;
-    --surface-2: #232322;
-    --border-1: #33322f;
-    --text-primary: #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted: #8f8e85;
-    --accent: #3987e5;
-    --accent-soft: #184f95;
-    --good: #4caf50;
-  }
+.viz ::placeholder {
+  color: var(--text-faint);
 }

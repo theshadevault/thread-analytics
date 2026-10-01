@@ -1,5 +1,6 @@
 import type { ScheduledThread } from '@/db/schema';
 import type { PublicAccount } from '@/lib/accounts';
+import { accountAccent } from '@/lib/theme';
 
 /** Visual + label metadata per thread status, keyed off the DB `status` column. */
 export const STATUS_META: Record<
@@ -32,9 +33,9 @@ export const STATUS_META: Record<
   },
   failed: {
     label: 'Failed',
-    color: '#e5484d',
-    bg: 'color-mix(in srgb, #e5484d 14%, transparent)',
-    ring: 'color-mix(in srgb, #e5484d 45%, transparent)',
+    color: 'var(--bad)',
+    bg: 'var(--bad-bg)',
+    ring: 'var(--bad-border)',
   },
   canceled: {
     label: 'Canceled',
@@ -46,6 +47,20 @@ export const STATUS_META: Record<
 
 export function statusMeta(status: string) {
   return STATUS_META[status] ?? STATUS_META.pending;
+}
+
+/** Calendar/list pill styling per status: posted solid, scheduled dashed, failed red. */
+export function pillLook(status: string): { bg: string; border: string; borderStyle: 'solid' | 'dashed'; time: string } {
+  switch (status) {
+    case 'posted':
+      return { bg: '#1a1a17', border: '#2a2a25', borderStyle: 'solid', time: 'var(--text-muted)' };
+    case 'failed':
+      return { bg: 'var(--bad-bg)', border: 'var(--bad-border)', borderStyle: 'solid', time: 'var(--bad)' };
+    case 'publishing':
+      return { bg: 'transparent', border: '#6b5a2a', borderStyle: 'solid', time: '#e0b25a' };
+    default:
+      return { bg: 'transparent', border: '#4a4a42', borderStyle: 'dashed', time: 'var(--text-secondary)' };
+  }
 }
 
 /** Drafts live in their own section — they're never placed on the timeline/calendar. */
@@ -94,12 +109,9 @@ export function imageSrc(url: string): string {
     : url;
 }
 
-/** Deterministic pastel-on-dark colour for an account monogram avatar. */
-const AVATAR_HUES = [210, 160, 280, 20, 330, 130, 45, 250];
-export function avatarColor(seed: string): string {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  return `hsl(${AVATAR_HUES[h % AVATAR_HUES.length]} 55% 45%)`;
+/** An account's colour (its accent) for monogram avatars and calendar dots. */
+export function avatarColor(username: string): string {
+  return accountAccent(username);
 }
 
 export function usernameFor(

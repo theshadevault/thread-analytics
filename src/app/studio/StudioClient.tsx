@@ -9,16 +9,19 @@ import { ThreadDetailModal } from './components/ThreadDetailModal';
 import { DraftsView } from './components/DraftsView';
 import {
   addMonths,
-  avatarColor,
   displayDate,
   fmtMonthYear,
+  fmtTime,
   hasMedia,
   isDraft,
+  pillLook,
   startOfMonth,
   statusMeta,
   usernameFor,
   type Thread,
 } from './helpers';
+import { AccountChip, AppShell, Avatar, Seg, ghostBtn } from '@/app/components/AppShell';
+import { NEUTRAL_ACCENT, accountAccent } from '@/lib/theme';
 
 const ALL = 'all';
 
@@ -120,9 +123,12 @@ export default function StudioClient() {
     });
   }
 
+  const filterAccount = accounts?.find((a) => a.threadsUserId === accountFilter) ?? null;
+  const accent = filterAccount ? accountAccent(filterAccount.username) : NEUTRAL_ACCENT;
+
   if (accounts === null) {
     return (
-      <Shell>
+      <Shell accent={accent} accounts={accounts}>
         <div className="py-24 text-center text-sm text-[var(--text-muted)]">Loading…</div>
       </Shell>
     );
@@ -130,15 +136,15 @@ export default function StudioClient() {
 
   if (accounts.length === 0) {
     return (
-      <Shell>
-        <div className="rounded-xl border border-[var(--border-1)] bg-[var(--surface-1)] p-10 text-center">
-          <h2 className="text-lg font-medium">No accounts connected</h2>
+      <Shell accent={accent} accounts={accounts}>
+        <div className="rounded-[22px] border border-[var(--border-1)] bg-[var(--surface-1)] p-10 text-center">
+          <h2 className="text-2xl font-bold tracking-[-0.03em]">No accounts connected</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-[var(--text-secondary)]">
             Connect a Threads account before scheduling posts.
           </p>
           <a
             href="/api/auth/threads"
-            className="mt-5 inline-block rounded-lg bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
+            className="mt-5 inline-block rounded-[10px] bg-[var(--accent)] px-5 py-2.5 text-sm font-bold text-[var(--on-accent)] hover:opacity-90"
           >
             Connect an account
           </a>
@@ -147,114 +153,104 @@ export default function StudioClient() {
     );
   }
 
+  const monthName = month.toLocaleDateString(undefined, { month: 'long' });
+
   return (
-    <Shell>
+    <Shell accent={accent} accounts={accounts}>
       {/* Toolbar */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setMonth(startOfMonth(new Date()))}
-            className="rounded-lg bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] ring-1 ring-[var(--border-1)] hover:text-[var(--text-primary)]"
-          >
-            Today
-          </button>
-          <button
-            onClick={() => setMonth((m) => addMonths(m, -1))}
-            className="rounded-lg bg-[var(--surface-1)] px-2.5 py-1.5 text-sm text-[var(--text-secondary)] ring-1 ring-[var(--border-1)] hover:text-[var(--text-primary)]"
-            aria-label="Previous month"
-          >
-            ‹
-          </button>
-          <button
-            onClick={() => setMonth((m) => addMonths(m, 1))}
-            className="rounded-lg bg-[var(--surface-1)] px-2.5 py-1.5 text-sm text-[var(--text-secondary)] ring-1 ring-[var(--border-1)] hover:text-[var(--text-primary)]"
-            aria-label="Next month"
-          >
-            ›
-          </button>
-          <h2 className="ml-1.5 text-base font-semibold text-[var(--text-primary)]">
-            {fmtMonthYear(month)}
-          </h2>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end gap-3.5">
+          <h1 className="m-0 text-[clamp(34px,4.4vw,56px)] font-extrabold leading-[0.95] tracking-[-0.04em]" title={fmtMonthYear(month)}>
+            {monthName} <span className="text-[var(--text-muted)]">{month.getFullYear()}</span>
+          </h1>
+          <div className="flex gap-1 pb-1">
+            <button onClick={() => setMonth((m) => addMonths(m, -1))} className={`${ghostBtn} h-8 w-8 !p-0`} aria-label="Previous month">
+              ‹
+            </button>
+            <button onClick={() => setMonth((m) => addMonths(m, 1))} className={`${ghostBtn} h-8 w-8 !p-0`} aria-label="Next month">
+              ›
+            </button>
+            <button onClick={() => setMonth(startOfMonth(new Date()))} className={`${ghostBtn} h-8 !py-0`}>
+              Today
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Account filter */}
           {accounts.length > 1 && (
-            <select
-              value={accountFilter}
-              onChange={(e) => setAccountFilter(e.target.value)}
-              className="rounded-lg bg-[var(--surface-1)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] ring-1 ring-[var(--border-1)] outline-none"
-            >
-              <option value={ALL}>All accounts</option>
+            <div className="flex flex-wrap gap-1" role="group" aria-label="Account filter">
+              <AccountChip small username={null} label="All" active={accountFilter === ALL} onClick={() => setAccountFilter(ALL)} />
               {accounts.map((a) => (
-                <option key={a.threadsUserId} value={a.threadsUserId}>
-                  @{a.username}
-                </option>
+                <AccountChip
+                  key={a.threadsUserId}
+                  small
+                  username={a.username}
+                  label={a.username}
+                  active={accountFilter === a.threadsUserId}
+                  onClick={() => setAccountFilter(a.threadsUserId)}
+                />
               ))}
-            </select>
+            </div>
           )}
 
           {/* Month / List / Drafts toggle */}
-          <div className="flex overflow-hidden rounded-lg ring-1 ring-[var(--border-1)]">
-            {(['month', 'list', 'drafts'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                  view === v
-                    ? 'bg-[var(--accent)] text-white'
-                    : 'bg-[var(--surface-1)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                {v === 'month'
-                  ? '▦ Month'
-                  : v === 'list'
-                    ? '☰ List'
-                    : `✎ Drafts${drafts.length ? ` (${drafts.length})` : ''}`}
-              </button>
-            ))}
-          </div>
+          <Seg
+            label="View"
+            options={[
+              { value: 'month' as const, label: '▦ Month' },
+              { value: 'list' as const, label: '☰ List' },
+              { value: 'drafts' as const, label: `✎ Drafts${drafts.length ? ` (${drafts.length})` : ''}` },
+            ]}
+            value={view}
+            onChange={setView}
+          />
 
-          <span className="text-xs text-[var(--text-muted)] tabular-nums">
-            {scheduledCount} scheduled
-          </span>
-          <button
-            onClick={refresh}
-            disabled={loading}
-            className="rounded-lg bg-[var(--surface-1)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] ring-1 ring-[var(--border-1)] hover:text-[var(--text-primary)] disabled:opacity-50"
-            title="Refresh"
-          >
+          <span className="font-mono text-xs tabular-nums text-[var(--text-muted)]">{scheduledCount} scheduled</span>
+          <button onClick={refresh} disabled={loading} className={`${ghostBtn} h-8 w-8 !p-0`} title="Refresh">
             {loading ? '…' : '↻'}
           </button>
           <button
             onClick={() => openNew()}
-            className="rounded-lg bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+            className="rounded-[10px] bg-[var(--accent)] px-4 py-[9px] text-sm font-bold text-[var(--on-accent)] transition-colors hover:brightness-110"
           >
             + New post
           </button>
         </div>
       </div>
 
-      {view === 'month' ? (
-        <MonthCalendar
+      <div className="grid items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0">
+          {view === 'month' ? (
+            <MonthCalendar
+              month={month}
+              threads={timeline}
+              accounts={accounts}
+              onSelectThread={setDetail}
+              onAddOnDay={openNew}
+            />
+          ) : view === 'list' ? (
+            <ListView threads={timeline} accounts={accounts} onSelect={setDetail} />
+          ) : (
+            <DraftsView
+              threads={drafts}
+              accounts={accounts}
+              onSelect={setDetail}
+              onEdit={openEdit}
+              onNew={() => openNew()}
+              onChanged={refresh}
+            />
+          )}
+        </div>
+        <StudioAside
+          threads={visible}
           month={month}
-          threads={timeline}
           accounts={accounts}
-          onSelectThread={setDetail}
-          onAddOnDay={openNew}
-        />
-      ) : view === 'list' ? (
-        <ListView threads={timeline} accounts={accounts} onSelect={setDetail} />
-      ) : (
-        <DraftsView
-          threads={drafts}
-          accounts={accounts}
+          draftCount={drafts.length}
           onSelect={setDetail}
-          onEdit={openEdit}
-          onNew={() => openNew()}
-          onChanged={refresh}
+          onDrafts={() => setView('drafts')}
         />
-      )}
+      </div>
 
       <Composer
         accounts={accounts}
@@ -294,41 +290,35 @@ function ListView({
 
   if (!sorted.length) {
     return (
-      <div className="rounded-xl border border-[var(--border-1)] bg-[var(--surface-1)] p-10 text-center text-sm text-[var(--text-muted)]">
+      <div className="rounded-[22px] border border-[var(--border-1)] bg-[var(--surface-3)] p-10 text-center text-sm text-[var(--text-muted)]">
         Nothing here yet. Hit “+ New post” to schedule your first thread.
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--border-1)] bg-[var(--surface-1)]">
-      {sorted.map((t, i) => {
+    <div className="flex flex-col gap-1.5 rounded-[22px] border border-[var(--border-1)] bg-[var(--surface-3)] p-2.5">
+      {sorted.map((t) => {
         const meta = statusMeta(t.status);
         const username = usernameFor(t.threadsUserId, accounts);
         const when = displayDate(t);
+        const look = pillLook(t.status);
         return (
           <button
             key={t.id}
             onClick={() => onSelect(t)}
-            className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--surface-2)] ${
-              i > 0 ? 'border-t border-[var(--border-1)]' : ''
-            }`}
+            className="grid w-full grid-cols-[22px_minmax(0,1fr)_auto] items-center gap-3 rounded-[10px] border px-3 py-2.5 text-left transition-[filter] hover:brightness-125 sm:grid-cols-[52px_22px_minmax(0,1fr)_auto]"
+            style={{ background: look.bg, borderColor: look.border, borderStyle: look.borderStyle }}
           >
-            <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-              style={{ background: avatarColor(username) }}
-            >
-              {username.slice(0, 1).toUpperCase()}
-            </span>
-            <div className="min-w-0 flex-1">
+            <span className="hidden font-mono text-xs text-[var(--text-secondary)] sm:block">{fmtTime(when)}</span>
+            <Avatar username={username} />
+            <div className="min-w-0">
               <p className="truncate text-sm font-medium text-[var(--text-primary)]">
                 {hasMedia(t) && <span title="Has images">🖼 </span>}
                 {t.segments[0] || '(empty)'}
-                {t.segments.length > 1 && (
-                  <span className="text-[var(--text-muted)]"> · {t.segments.length} parts</span>
-                )}
+                {t.segments.length > 1 && <span className="text-[var(--text-muted)]"> · {t.segments.length} parts</span>}
               </p>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="font-mono text-[11px] text-[var(--text-muted)]">
                 @{username} · {t.status === 'posted' ? 'Posted ' : ''}
                 {when.toLocaleString(undefined, {
                   month: 'short',
@@ -338,10 +328,7 @@ function ListView({
                 })}
               </p>
             </div>
-            <span
-              className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-              style={{ color: meta.color, background: meta.bg }}
-            >
+            <span className="shrink-0 font-mono text-[11px]" style={{ color: meta.color }}>
               {meta.label}
             </span>
           </button>
@@ -351,35 +338,144 @@ function ListView({
   );
 }
 
-/** Page chrome: nav between Analytics and Studio + the connect button. */
-function Shell({ children }: { children: React.ReactNode }) {
+/** Countdown, month status counts, failed posts and the upcoming queue. */
+function StudioAside({
+  threads,
+  month,
+  accounts,
+  draftCount,
+  onSelect,
+  onDrafts,
+}: {
+  threads: Thread[];
+  month: Date;
+  accounts: PublicAccount[];
+  draftCount: number;
+  onSelect: (t: Thread) => void;
+  onDrafts: () => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const upcoming = threads
+    .filter((t) => t.status === 'pending' && +new Date(t.scheduledAt) > now)
+    .sort((a, b) => +new Date(a.scheduledAt) - +new Date(b.scheduledAt));
+  const next = upcoming[0] ?? null;
+  const inMonth = (t: Thread) => {
+    const d = displayDate(t);
+    return d.getFullYear() === month.getFullYear() && d.getMonth() === month.getMonth();
+  };
+  const monthLabel = month.toLocaleDateString(undefined, { month: 'short' });
+  const failed = threads.filter((t) => t.status === 'failed').sort((a, b) => +displayDate(b) - +displayDate(a));
+  const stats = [
+    { n: threads.filter((t) => t.status === 'posted' && inMonth(t)).length, label: 'Posted', color: 'var(--text-primary)' },
+    { n: threads.filter((t) => t.status === 'pending' && inMonth(t)).length, label: 'Scheduled', color: 'var(--accent)' },
+    { n: threads.filter((t) => t.status === 'failed' && inMonth(t)).length, label: 'Failed', color: 'var(--bad-strong)' },
+  ];
+
   return (
-    <div className="viz min-h-screen bg-[var(--surface-2)] text-[var(--text-primary)]">
-      <div className="mx-auto max-w-6xl px-5 py-8">
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold tracking-tight">Studio</h1>
-            <nav className="flex gap-1 text-sm">
-              <a
-                href="/dashboard"
-                className="rounded-lg px-3 py-1.5 font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-1)] hover:text-[var(--text-primary)]"
-              >
-                Analytics
-              </a>
-              <span className="rounded-lg bg-[var(--surface-1)] px-3 py-1.5 font-medium text-[var(--text-primary)] ring-1 ring-[var(--border-1)]">
-                Studio
-              </span>
-            </nav>
-          </div>
-          <a
-            href="/api/auth/threads"
-            className="rounded-lg bg-[var(--surface-1)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] ring-1 ring-[var(--border-1)] transition-colors hover:text-[var(--text-primary)]"
-          >
-            + Connect account
-          </a>
-        </header>
-        {children}
+    <aside className="flex flex-col gap-3.5">
+      <div className="flex flex-col gap-1 rounded-[22px] bg-[var(--accent)] p-5 text-[var(--on-accent)] transition-colors">
+        <div className="text-sm font-semibold">{next ? 'Next post goes out in' : 'Nothing queued'}</div>
+        <div className="text-[56px] font-extrabold leading-none tracking-[-0.05em] tabular-nums">
+          {next ? countdown(+new Date(next.scheduledAt) - now) : '—'}
+        </div>
+        <div className="truncate text-[13px] font-medium opacity-75">
+          {next
+            ? `${new Date(next.scheduledAt).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false })} · @${usernameFor(next.threadsUserId, accounts)}`
+            : 'Hit “+ New post” to schedule one.'}
+        </div>
       </div>
-    </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {stats.map((s) => (
+          <div key={s.label} className="flex flex-col gap-1 rounded-[14px] border border-[var(--border-1)] bg-[var(--surface-1)] p-3">
+            <span className="text-[28px] font-extrabold leading-none tracking-[-0.04em] tabular-nums" style={{ color: s.n || s.label !== 'Failed' ? s.color : 'var(--text-muted)' }}>
+              {s.n}
+            </span>
+            <span className="text-xs text-[var(--text-secondary)]">{s.label}</span>
+          </div>
+        ))}
+        <span className="col-span-3 -mt-1 text-right font-mono text-[10px] text-[var(--text-faint)]">in {monthLabel}</span>
+      </div>
+
+      {failed.length > 0 && (
+        <div className="flex flex-col gap-2.5 rounded-[18px] border border-[var(--bad-border)] bg-[var(--bad-bg)] p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[15px] font-bold text-[var(--bad)]">Didn&apos;t post</span>
+            <span className="font-mono text-[11px] text-[var(--bad)]">{failed.length}</span>
+          </div>
+          {failed.slice(0, 4).map((t) => (
+            <div key={t.id} className="flex items-center gap-2.5">
+              <span className="font-mono text-[11px] text-[#c9a69e]">{fmtTime(displayDate(t))}</span>
+              <span className="min-w-0 flex-1 truncate text-[13px]" title={t.segments[0]}>
+                {t.segments[0] || '(empty)'}
+              </span>
+              <button
+                onClick={() => onSelect(t)}
+                title="Open this post — retry, edit or cancel it"
+                className="rounded-[7px] bg-[var(--bad-strong)] px-2.5 py-1 text-xs font-bold text-[var(--on-accent)] hover:brightness-110"
+              >
+                Retry
+              </button>
+            </div>
+          ))}
+          {failed.length > 4 && <span className="font-mono text-[11px] text-[#c9a69e]">+{failed.length - 4} more</span>}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2.5 rounded-[18px] border border-[var(--border-1)] bg-[var(--surface-1)] p-4">
+        <div className="flex items-center justify-between">
+          <span className="text-[15px] font-bold">Queue</span>
+          <span className="font-mono text-[11px] text-[var(--text-muted)]">{upcoming.length} upcoming</span>
+        </div>
+        {upcoming.length === 0 ? (
+          <p className="border-t border-[var(--divider)] pt-2 text-[13px] text-[var(--text-muted)]">Nothing scheduled.</p>
+        ) : (
+          upcoming.slice(0, 6).map((t) => {
+            const d = new Date(t.scheduledAt);
+            return (
+              <button
+                key={t.id}
+                onClick={() => onSelect(t)}
+                className="flex items-center gap-2.5 border-t border-[var(--divider)] py-1.5 text-left hover:text-[var(--accent)]"
+              >
+                <span className="w-[74px] shrink-0 font-mono text-xs text-[var(--accent)]">
+                  {d.toLocaleDateString(undefined, { weekday: 'short' })} {fmtTime(d)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[13px]">{t.segments[0] || '(empty)'}</span>
+              </button>
+            );
+          })
+        )}
+        <button
+          onClick={onDrafts}
+          className="mt-1 rounded-[10px] border border-dashed border-[var(--border-2)] p-2 text-[13px] text-[var(--text-secondary)] hover:border-[#55554d] hover:text-[var(--text-primary)]"
+        >
+          Drafts ({draftCount})
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+/** "2h 14m", "3d 4h", "12m" until a time. */
+function countdown(ms: number): string {
+  const m = Math.max(0, Math.round(ms / 60000));
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ${m % 60}m`;
+  return `${Math.floor(h / 24)}d ${h % 24}h`;
+}
+
+/** Page chrome: nav between Analytics and Studio + the connect button. */
+function Shell({ accent, accounts, children }: { accent: string; accounts: PublicAccount[] | null; children: React.ReactNode }) {
+  return (
+    <AppShell page="studio" accent={accent} accounts={accounts}>
+      {children}
+    </AppShell>
   );
 }

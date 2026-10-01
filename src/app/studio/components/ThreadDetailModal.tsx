@@ -99,7 +99,7 @@ export function ThreadDetailModal({
         <div className="flex items-center justify-between border-b border-[var(--border-1)] px-5 py-3.5">
           <div className="flex items-center gap-2.5">
             <span
-              className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-[var(--on-accent)]"
               style={{ background: avatarColor(username) }}
             >
               {username.slice(0, 1).toUpperCase()}
@@ -155,11 +155,11 @@ export function ThreadDetailModal({
           })}
 
           {thread.error && (
-            <div className="rounded-lg bg-[color-mix(in_srgb,#e5484d_10%,transparent)] px-3 py-2 text-xs text-[#e5484d]">
+            <div className="rounded-lg bg-[color-mix(in_srgb,var(--bad)_10%,transparent)] px-3 py-2 text-xs text-[var(--bad)]">
               {thread.error}
             </div>
           )}
-          {err && <p className="text-xs text-[#e5484d]">{err}</p>}
+          {err && <p className="text-xs text-[var(--bad)]">{err}</p>}
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border-1)] px-5 py-3.5">
@@ -178,7 +178,7 @@ export function ThreadDetailModal({
               <button
                 onClick={cancel}
                 disabled={busy !== null}
-                className="rounded-lg px-3 py-1.5 text-xs font-medium text-[#e5484d] ring-1 ring-[color-mix(in_srgb,#e5484d_40%,transparent)] hover:bg-[color-mix(in_srgb,#e5484d_10%,transparent)] disabled:opacity-50"
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--bad)] ring-1 ring-[color-mix(in_srgb,var(--bad)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--bad)_10%,transparent)] disabled:opacity-50"
               >
                 {busy === 'cancel' ? 'Canceling…' : isDraft ? 'Delete draft' : 'Cancel'}
               </button>
@@ -195,7 +195,7 @@ export function ThreadDetailModal({
             <button
               onClick={publishNow}
               disabled={busy !== null}
-              className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--on-accent)] hover:opacity-90 disabled:opacity-50"
             >
               {busy === 'now' ? 'Posting…' : isFailed ? 'Retry now' : 'Post now'}
             </button>

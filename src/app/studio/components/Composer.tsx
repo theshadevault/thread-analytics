@@ -179,7 +179,7 @@ export function Composer({
           {/* Account */}
           <div className="mb-4 flex items-center gap-2.5">
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-[var(--on-accent)]"
               style={{ background: avatarColor(acct?.username ?? accountId) }}
             >
               {(acct?.username ?? '?').slice(0, 1).toUpperCase()}
@@ -247,7 +247,7 @@ export function Composer({
             </label>
           </div>
 
-          {err && <p className="mt-3 text-xs text-[#e5484d]">{err}</p>}
+          {err && <p className="mt-3 text-xs text-[var(--bad)]">{err}</p>}
         </div>
 
         {/* Footer actions */}
@@ -267,7 +267,7 @@ export function Composer({
             <button
               onClick={() => save(true)}
               disabled={busy !== null}
-              className="rounded-lg bg-[var(--accent)] px-3.5 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="rounded-lg bg-[var(--accent)] px-3.5 py-2 text-xs font-medium text-[var(--on-accent)] transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {busy === 'now' ? 'Posting…' : 'Post now'}
             </button>
@@ -321,7 +321,7 @@ function PartCard({
           <span className="font-medium">
             Part {index + 1} / {total}
           </span>
-          <button onClick={onRemove} className="hover:text-[#e5484d]">
+          <button onClick={onRemove} className="hover:text-[var(--bad)]">
             Remove part
           </button>
         </div>
@@ -380,7 +380,7 @@ function PartCard({
           />
           <button
             onClick={commitUrl}
-            className="rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-white hover:opacity-90"
+            className="rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-medium text-[var(--on-accent)] hover:opacity-90"
           >
             Add
           </button>
@@ -405,7 +405,7 @@ function PartCard({
         ) : (
           <span />
         )}
-        <span className={`text-[11px] tabular-nums ${over ? 'text-[#e5484d]' : 'text-[var(--text-muted)]'}`}>
+        <span className={`text-[11px] tabular-nums ${over ? 'text-[var(--bad)]' : 'text-[var(--text-muted)]'}`}>
           {len}/{MAX_LEN}
         </span>
       </div>

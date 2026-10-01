@@ -3,15 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicAccount } from '@/lib/accounts';
 import type { AnalyticsPayload, CombinedPayload } from '@/lib/analytics';
-import { StatTile } from './components/StatTile';
 import { CountryBars } from './components/CountryBars';
-import { PostsTable } from './components/PostsTable';
+import { PostsTable, type PostRow } from './components/PostsTable';
 import { PostsChart } from './components/PostsChart';
 import { HookAnalysis } from './components/HookAnalysis';
-import { Trends } from './components/Trends';
+import { EngagementTiles, FollowersCard, ViewsCard, useSnapshots } from './components/Hero';
+import { AccountChip, AppShell, Seg, ghostBtn } from '@/app/components/AppShell';
 import { extractHook } from '@/lib/hooks';
 import { stashRepurpose } from '@/lib/repurpose';
-import type { PostRow } from './components/PostsTable';
+import { NEUTRAL_ACCENT, accountAccent } from '@/lib/theme';
 
 const RANGES = [7, 14, 30, 60, 90] as const;
 const COMBINED = 'combined';
@@ -151,290 +151,213 @@ export default function DashboardClient() {
     downloadCsv(`threads-${who}-${days}d-${stamp}.csv`, buildPostsCsv(posts, includeAccount));
   }
 
+  const accountIds = useMemo(() => (accounts ?? []).map((a) => a.threadsUserId), [accounts]);
+  const snaps = useSnapshots(selected, accountIds, days, selected === COMBINED);
+  const accent = activeAccount ? accountAccent(activeAccount.username) : NEUTRAL_ACCENT;
+  const title = selected === COMBINED ? 'all accounts' : activeAccount ? `@${activeAccount.username}` : '';
+
   return (
-    <div className="viz min-h-screen bg-[var(--surface-2)] text-[var(--text-primary)]">
-      <div className="mx-auto max-w-6xl px-5 py-8">
-        {/* Header */}
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold tracking-tight">Threads Analytics</h1>
-            <nav className="flex gap-1 text-sm">
-              <span className="rounded-lg bg-[var(--surface-1)] px-3 py-1.5 font-medium text-[var(--text-primary)] ring-1 ring-[var(--border-1)]">
-                Analytics
-              </span>
-              <a
-                href="/studio"
-                className="rounded-lg px-3 py-1.5 font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-1)] hover:text-[var(--text-primary)]"
-              >
-                Studio
-              </a>
-            </nav>
-          </div>
+    <AppShell page="analytics" accent={accent} accounts={accounts}>
+      {notice && (
+        <div
+          role="status"
+          className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm ${
+            notice.kind === 'ok'
+              ? 'border-[var(--good)]/40 text-[var(--good)]'
+              : 'border-[var(--bad-border)] bg-[var(--bad-bg)] text-[var(--bad)]'
+          }`}
+        >
+          <span>{notice.text}</span>
+          <button onClick={() => setNotice(null)} aria-label="Dismiss" className="opacity-60 hover:opacity-100">
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {accounts !== null && accounts.length === 0 && (
+        <div className="rounded-[22px] border border-[var(--border-1)] bg-[var(--surface-1)] p-10 text-center">
+          <h2 className="text-2xl font-bold tracking-[-0.03em]">No accounts connected yet</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-[var(--text-secondary)]">
+            Connect each of your Threads accounts once. They must be added as Testers on your
+            Meta app while it&apos;s in Development Mode.
+          </p>
           <a
             href="/api/auth/threads"
-            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            className="mt-5 inline-block rounded-[10px] bg-[var(--accent)] px-5 py-2.5 text-sm font-bold text-[var(--on-accent)] hover:opacity-90"
           >
-            + Connect account
+            Connect your first account
           </a>
-        </header>
+        </div>
+      )}
 
-        {notice && (
-          <div
-            className={`mb-4 flex items-center justify-between rounded-lg border px-4 py-2.5 text-sm ${
-              notice.kind === 'ok'
-                ? 'border-[var(--good)]/40 text-[var(--good)]'
-                : 'border-red-500/40 text-red-500'
-            }`}
-          >
-            <span>{notice.text}</span>
-            <button onClick={() => setNotice(null)} className="opacity-60 hover:opacity-100">
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {accounts !== null && accounts.length === 0 && (
-          <div className="rounded-xl border border-[var(--border-1)] bg-[var(--surface-1)] p-10 text-center">
-            <h2 className="text-lg font-medium">No accounts connected yet</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-[var(--text-secondary)]">
-              Connect each of your Threads accounts once. They must be added as Testers on your
-              Meta app while it&apos;s in Development Mode.
-            </p>
-            <a
-              href="/api/auth/threads"
-              className="mt-5 inline-block rounded-lg bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
-            >
-              Connect your first account
-            </a>
-          </div>
-        )}
-
-        {/* Account switcher + range */}
-        {accounts && accounts.length > 0 && (
-          <>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      {accounts && accounts.length > 0 && (
+        <>
+          {/* Title, account switcher, range + actions */}
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="flex min-w-0 flex-col gap-3">
+              <h1 className="m-0 text-[clamp(34px,4.4vw,56px)] font-extrabold leading-[0.95] tracking-[-0.04em] [text-wrap:balance]">
+                Last {days} days, <span className="break-all text-[var(--accent)] transition-colors">{title}</span>
+              </h1>
               <div className="flex flex-wrap gap-1.5">
                 {accounts.length > 1 && (
-                  <button
-                    onClick={() => setSelected(COMBINED)}
-                    className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
-                      selected === COMBINED
-                        ? 'bg-[var(--surface-1)] text-[var(--text-primary)] shadow-sm ring-1 ring-[var(--accent)]/40'
-                        : 'text-[var(--text-secondary)] hover:bg-[var(--surface-1)]/60'
-                    }`}
-                  >
-                    All accounts
-                  </button>
+                  <AccountChip username={null} label="All accounts" active={selected === COMBINED} onClick={() => setSelected(COMBINED)} />
                 )}
-                {accounts.map((a) => {
-                  const active = a.threadsUserId === selected;
-                  return (
-                    <button
-                      key={a.threadsUserId}
-                      onClick={() => setSelected(a.threadsUserId)}
-                      className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
-                        active
-                          ? 'bg-[var(--surface-1)] text-[var(--text-primary)] shadow-sm ring-1 ring-[var(--border-1)]'
-                          : 'text-[var(--text-secondary)] hover:bg-[var(--surface-1)]/60'
-                      }`}
-                    >
-                      @{a.username}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="flex overflow-hidden rounded-lg ring-1 ring-[var(--border-1)]">
-                  {RANGES.map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setDays(r)}
-                      className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                        days === r
-                          ? 'bg-[var(--accent)] text-white'
-                          : 'bg-[var(--surface-1)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                      }`}
-                    >
-                      {r}d
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => selected && load(selected, days, true)}
-                  disabled={loading}
-                  className="rounded-lg bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] ring-1 ring-[var(--border-1)] transition-colors hover:text-[var(--text-primary)] disabled:opacity-50"
-                  title="Bypass the 5-minute cache and re-pull from Meta"
-                >
-                  {loading ? 'Loading…' : '↻ Refresh'}
-                </button>
-                <button
-                  onClick={handleExport}
-                  disabled={loading || !(data?.posts?.length)}
-                  className="rounded-lg bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] ring-1 ring-[var(--border-1)] transition-colors hover:text-[var(--text-primary)] disabled:opacity-50"
-                  title={`Export all posts in the last ${days} days to CSV`}
-                >
-                  ⬇ Export CSV
-                </button>
-                <a
-                  href="/studio"
-                  className="rounded-lg bg-[var(--surface-1)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] ring-1 ring-[var(--border-1)] transition-colors hover:text-[var(--text-primary)]"
-                  title="Compose, schedule, and manage posts in the Studio"
-                >
-                  ✍ Studio
-                </a>
-              </div>
-            </div>
-
-            {error && (
-              <div className="mb-5 rounded-lg border border-red-500/40 bg-red-500/5 px-4 py-3 text-sm text-red-500">
-                {error}
-              </div>
-            )}
-
-            {/* KPI tiles */}
-            <section className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              <StatTile
-                label="Followers"
-                value={data?.account.followersCount}
-                loading={loading}
-                emphasis
-              />
-              <StatTile label="Views" value={data?.account.views} loading={loading} />
-              <StatTile label="Likes" value={data?.account.likes} loading={loading} />
-              <StatTile label="Replies" value={data?.account.replies} loading={loading} />
-              <StatTile label="Reposts" value={data?.account.reposts} loading={loading} />
-              <StatTile label="Quotes" value={data?.account.quotes} loading={loading} />
-            </section>
-
-            {/* Per-account comparison (combined view only) */}
-            {combined && (
-              <section className="mb-5 overflow-x-auto rounded-xl border border-[var(--border-1)] bg-[var(--surface-1)]">
-                <table className="w-full min-w-[520px] text-sm">
-                  <thead>
-                    <tr className="text-left text-xs text-[var(--text-muted)]">
-                      <th className="px-4 py-2.5 font-medium">Account</th>
-                      <th className="px-3 py-2.5 text-right font-medium">Followers</th>
-                      <th className="px-3 py-2.5 text-right font-medium">Post views</th>
-                      <th className="px-3 py-2.5 text-right font-medium">Posts</th>
-                      <th className="px-3 py-2.5 text-right font-medium">Engagement</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {combined.accounts.map((a) => (
-                      <tr key={a.threadsUserId} className="border-t border-[var(--border-1)]">
-                        <td className="px-4 py-2.5 font-medium">
-                          @{a.username}
-                          {a.error && (
-                            <span className="ml-2 text-xs text-red-500">({a.error})</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">
-                          {a.followersCount.toLocaleString()}
-                        </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">
-                          {a.views.toLocaleString()}
-                        </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">{a.postCount}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums">
-                          {a.totalEngagement.toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </section>
-            )}
-
-            {selected && (
-              <Trends
-                selected={selected}
-                accountIds={accounts.map((a) => a.threadsUserId)}
-                days={days}
-                combined={selected === COMBINED}
-              />
-            )}
-
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-              {/* Posts: table / chart toggle */}
-              <div className="lg:col-span-2">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="relative min-w-[180px] flex-1">
-                    <input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search posts by keyword…"
-                      className="w-full rounded-lg bg-[var(--surface-1)] px-3 py-1.5 text-xs text-[var(--text-primary)] ring-1 ring-[var(--border-1)] outline-none placeholder:text-[var(--text-muted)] focus:ring-[var(--accent)]/50"
-                    />
-                    {search && (
-                      <button
-                        onClick={() => setSearch('')}
-                        title="Clear search"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex overflow-hidden rounded-lg ring-1 ring-[var(--border-1)]">
-                    {(['table', 'chart'] as const).map((v) => (
-                      <button
-                        key={v}
-                        onClick={() => setPostsView(v)}
-                        className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                          postsView === v
-                            ? 'bg-[var(--accent)] text-white'
-                            : 'bg-[var(--surface-1)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                        }`}
-                      >
-                        {v === 'table' ? '☰ Table' : '▊ Chart'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {postsView === 'table' ? (
-                  <PostsTable
-                    posts={filteredPosts}
-                    loading={loading}
-                    onRepurpose={handleRepurpose}
-                    repurposingId={repurposingId}
+                {accounts.map((a) => (
+                  <AccountChip
+                    key={a.threadsUserId}
+                    username={a.username}
+                    label={`@${a.username}`}
+                    active={a.threadsUserId === selected}
+                    onClick={() => setSelected(a.threadsUserId)}
                   />
-                ) : (
-                  <PostsChart posts={filteredPosts} loading={loading} />
-                )}
-              </div>
-
-              {/* Side column: demographics */}
-              <div className="flex flex-col gap-5">
-                <CountryBars data={data?.demographics.country ?? null} loading={loading} />
+                ))}
               </div>
             </div>
-
-            {data && data.posts.length > 0 && (
-              <HookAnalysis
-                posts={data.posts}
-                label={combined ? 'All accounts' : activeAccount ? `@${activeAccount.username}` : ''}
-                days={days}
+            <div className="flex flex-wrap items-center gap-2">
+              <Seg
+                label="Date range"
+                mono
+                options={RANGES.map((r) => ({ value: r as number, label: `${r}d` }))}
+                value={days}
+                onChange={setDays}
               />
-            )}
+              <button
+                onClick={() => selected && load(selected, days, true)}
+                disabled={loading}
+                className={ghostBtn}
+                title="Bypass the 5-minute cache and re-pull from Meta"
+              >
+                {loading ? 'Loading…' : '↻ Refresh'}
+              </button>
+              <button
+                onClick={handleExport}
+                disabled={loading || !data?.posts?.length}
+                className={ghostBtn}
+                title={`Export all posts in the last ${days} days to CSV`}
+              >
+                ↓ CSV
+              </button>
+              <a href="/studio" className={ghostBtn} title="Compose, schedule, and manage posts in the Studio">
+                ✍ Studio
+              </a>
+            </div>
+          </div>
 
-            {activeAccount && (
-              <p className="mt-6 text-xs text-[var(--text-muted)]">
-                Token for @{activeAccount.username} expires{' '}
-                {new Date(activeAccount.tokenExpiresAt).toLocaleDateString()}. Auto-refreshed weekly
-                by the cron job.
-                {data && ` · Data fetched ${new Date(data.fetchedAt).toLocaleTimeString()}.`}
-              </p>
-            )}
-          </>
-        )}
+          {error && (
+            <div role="alert" className="rounded-xl border border-[var(--bad-border)] bg-[var(--bad-bg)] px-4 py-3 text-sm text-[var(--bad)]">
+              {error}
+            </div>
+          )}
 
-        {accounts === null && (
-          <div className="py-20 text-center text-sm text-[var(--text-muted)]">Loading…</div>
-        )}
-      </div>
-    </div>
+          {/* Hero: followers (accent) + views */}
+          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))]">
+            <FollowersCard followers={data?.account.followersCount} snaps={snaps} loading={loading} />
+            <ViewsCard views={data?.account.views} snaps={snaps} loading={loading} />
+          </div>
+
+          <EngagementTiles account={data?.account} totals={data?.totals} loading={loading} />
+
+          {/* Per-account comparison (combined view only) */}
+          {combined && (
+            <section className="overflow-x-auto rounded-[22px] border border-[var(--border-1)] bg-[var(--surface-1)]">
+              <table className="w-full min-w-[520px] text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-[var(--text-muted)]">
+                    <th className="px-5 py-3 font-medium">Account</th>
+                    <th className="px-3 py-3 text-right font-medium">Followers</th>
+                    <th className="px-3 py-3 text-right font-medium">Post views</th>
+                    <th className="px-3 py-3 text-right font-medium">Posts</th>
+                    <th className="px-5 py-3 text-right font-medium">Engagement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {combined.accounts.map((a) => (
+                    <tr key={a.threadsUserId} className="border-t border-[var(--divider)]">
+                      <td className="px-5 py-3 font-medium">
+                        <span className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full" style={{ background: accountAccent(a.username) }} />
+                          @{a.username}
+                          {a.error && <span className="text-xs text-[var(--bad)]">({a.error})</span>}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right tabular-nums">{a.followersCount.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">{a.views.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">{a.postCount}</td>
+                      <td className="px-5 py-3 text-right tabular-nums">{a.totalEngagement.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
+
+          {/* Top posts + countries */}
+          <div className="grid items-start gap-3.5 lg:grid-cols-3">
+            <div className="min-w-0 lg:col-span-2">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="relative min-w-[180px] flex-1">
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search posts by keyword…"
+                    aria-label="Search posts"
+                    className="w-full rounded-[10px] border border-[var(--border-1)] bg-[var(--surface-1)] px-3 py-[7px] text-[13px] text-[var(--text-primary)] outline-none focus:border-[color-mix(in_srgb,var(--accent)_60%,transparent)]"
+                  />
+                  {search && (
+                    <button
+                      onClick={() => setSearch('')}
+                      title="Clear search"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <Seg
+                  label="Posts view"
+                  options={[
+                    { value: 'table' as const, label: '☰ Table' },
+                    { value: 'chart' as const, label: '▊ Chart' },
+                  ]}
+                  value={postsView}
+                  onChange={setPostsView}
+                />
+              </div>
+              {postsView === 'table' ? (
+                <PostsTable
+                  posts={filteredPosts}
+                  loading={loading}
+                  onRepurpose={handleRepurpose}
+                  repurposingId={repurposingId}
+                />
+              ) : (
+                <PostsChart posts={filteredPosts} loading={loading} />
+              )}
+            </div>
+            <CountryBars data={data?.demographics.country ?? null} loading={loading} />
+          </div>
+
+          {data && data.posts.length > 0 && (
+            <HookAnalysis
+              posts={data.posts}
+              label={combined ? 'All accounts' : activeAccount ? `@${activeAccount.username}` : ''}
+              days={days}
+            />
+          )}
+
+          {activeAccount && (
+            <p className="font-mono text-[11px] text-[var(--text-muted)]">
+              Token for @{activeAccount.username} expires {new Date(activeAccount.tokenExpiresAt).toLocaleDateString()}.
+              Auto-refreshed weekly by the cron job.
+              {data && ` · Data fetched ${new Date(data.fetchedAt).toLocaleTimeString()}.`}
+            </p>
+          )}
+        </>
+      )}
+
+      {accounts === null && <div className="py-20 text-center text-sm text-[var(--text-muted)]">Loading…</div>}
+    </AppShell>
   );
 }
 
