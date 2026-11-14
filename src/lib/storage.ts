@@ -39,9 +39,15 @@ export function isStoredUrl(url: string): boolean {
   return cfg ? url.startsWith(publicPrefix(cfg)) : false;
 }
 
-/** True for AutoPost's ephemeral Vercel Blob URLs (the ones worth re-hosting). */
+/**
+ * True for AutoPost's ephemeral URLs (the ones worth re-hosting): its old Vercel
+ * Blob store, or its `autopost` Supabase bucket, which it prunes after ~1 hour.
+ */
 function isEphemeral(url: string): boolean {
-  return /\.public\.blob\.vercel-storage\.com\//i.test(url);
+  return (
+    /\.public\.blob\.vercel-storage\.com\//i.test(url) ||
+    /\/storage\/v1\/object\/public\/autopost\//.test(url)
+  );
 }
 
 function extFor(contentType: string | null): string {
