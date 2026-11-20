@@ -27,12 +27,14 @@ export const AUTO_REPLY: Record<string, Record<string, Product>> = {
   myrasharma808: {
     wardrobe: {
       name: 'Quiet Money Wardrobe',
-      link: 'https://theshadevault.gumroad.com/l/wardrobe',
+      // Gumroad UTM short link → /l/wardrobe (clicks + sales show under Gumroad's UTM links).
+      link: 'https://gum.co/u/fnf5bgsf',
       keywords: ['wardrobe'],
     },
     routine: {
       name: 'Quiet Glow Routine',
-      link: 'https://theshadevault.gumroad.com/l/routine',
+      // Gumroad UTM short link → /l/routine.
+      link: 'https://gum.co/u/ev0vnvw4',
       keywords: ['glow', 'routine'],
     },
   },
