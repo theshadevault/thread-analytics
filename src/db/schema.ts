@@ -1,4 +1,4 @@
-import { pgSchema, text, timestamp, integer, date, jsonb, primaryKey } from 'drizzle-orm/pg-core';
+import { pgSchema, text, timestamp, integer, date, jsonb, primaryKey, index } from 'drizzle-orm/pg-core';
 
 /**
  * All ThreadAnalytics tables live in a dedicated `threadanalytics` Postgres
@@ -126,3 +126,35 @@ export const oauthCodes = taSchema.table('oauth_codes', {
 });
 
 export type OAuthCode = typeof oauthCodes.$inferSelect;
+
+/**
+ * Comment-to-get-the-link auto-replies (see src/lib/autoreply.ts). One row per
+ * comment we decided to answer, written BEFORE the reply is published ('pending')
+ * so a comment can never be answered twice, even by overlapping cron runs. A row
+ * left in 'pending' means the run died mid-reply; it is never retried, since the
+ * reply may already be live.
+ */
+export const autoReplies = taSchema.table(
+  'auto_replies',
+  {
+    commentId: text('comment_id').primaryKey(),
+    threadsUserId: text('threads_user_id').notNull(),
+    // Root post of the thread the comment is under.
+    postId: text('post_id').notNull(),
+    commenter: text('commenter').notNull(),
+    commentText: text('comment_text'),
+    // Which product the comment asked for (key in AUTO_REPLY config).
+    product: text('product').notNull(),
+    replyText: text('reply_text').notNull(),
+    replyId: text('reply_id'),
+    // 'pending' → 'replied' | 'failed'
+    status: text('status').notNull().default('pending'),
+    error: text('error'),
+    commentedAt: timestamp('commented_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    repliedAt: timestamp('replied_at', { withTimezone: true }),
+  },
+  (t) => [index('auto_replies_account_created_idx').on(t.threadsUserId, t.createdAt)],
+);
+
+export type AutoReply = typeof autoReplies.$inferSelect;

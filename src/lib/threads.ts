@@ -214,7 +214,7 @@ export async function getPostMedia(params: {
   return { media_type: data.media_type ?? null, media_url: data.media_url ?? null };
 }
 
-interface ThreadMedia {
+export interface ThreadMedia {
   id: string;
   text?: string;
   media_type?: string;
@@ -240,7 +240,7 @@ async function getMedia(
 }
 
 /** Fetch all descendant posts of a thread root (flattened), following paging. */
-async function getConversation(
+export async function getConversation(
   rootId: string,
   fields: string,
   accessToken: string,
