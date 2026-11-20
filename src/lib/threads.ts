@@ -16,6 +16,8 @@ const API_VERSION = 'v1.0';
  *   (`reply_to_id`), i.e. every segment after the first in a thread chain.
  *   Without it Meta returns an opaque empty 500 on the reply container, so the
  *   root publishes but the rest of the thread silently fails.
+ * - `threads_read_replies` reads the comments under our posts (`/replies`,
+ *   `/conversation`), for the comment-to-get-the-link auto-reply.
  * Adding a scope requires each account to re-authorize via the connect flow.
  */
 export const SCOPES = [
@@ -23,6 +25,7 @@ export const SCOPES = [
   'threads_manage_insights',
   'threads_content_publish',
   'threads_manage_replies',
+  'threads_read_replies',
 ] as const;
 
 // ---------------------------------------------------------------------------
